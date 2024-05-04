@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "krpc-node": "^4.0.2"
+  },
+  "scripts": {
+    "launch": "node alphar_suicideburn.js"
+  }
+}

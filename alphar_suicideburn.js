@@ -18,6 +18,8 @@ class Main {
         this.velocity2 = 0;
         this.falled = false;
         this.closed;
+        this.ground = 5;
+        this.autoThrottle = true;
     }
 
     speedDecoder() {
@@ -59,16 +61,18 @@ class Main {
 
             if (timeToGround <= time) {
                 if (this.speed < -2) {
+                    this.autoThrottle = true;
                     await this.control.throttle.set(1);
                 } else {
                     await this.control.throttle.set(0);
                 }
-            } else {
+            } else if (this.autoThrottle == true) {
+                this.autoThrottle == false;
                 await this.control.throttle.set(0);
             }
         }
 
-        if (this.altitude <= 8 && this.falled) {
+        if (this.altitude <= this.ground && this.falled) {
             await this.control.throttle.set(0);
             this.burn = false;
             console.log("ALPHAR_LOGS: SUCCESS IN LADING");

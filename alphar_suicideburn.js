@@ -116,7 +116,6 @@ class Main {
             this.altitude = await this.flight.surfaceAltitude.get();
             this.mass = await this.vessel.mass.get();
             console.log("ALPHAR_LOGS: ALPHAR system on");
-            console.log(await this.vessel.situation.get());
 
             this.loop();
             this.speedDecoder();

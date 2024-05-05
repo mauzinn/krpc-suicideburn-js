@@ -1,4 +1,4 @@
-"use strict"
+'use strict';
 const { createClient, spaceCenter } = require("krpc-node");
 
 class Main {
@@ -16,10 +16,12 @@ class Main {
         this.burned = false;
         this.velocity1 = 0;
         this.velocity2 = 0;
+        this.falled = false;
+        this.closed;
     }
 
     speedDecoder() {
-        setInterval(async() => {
+        let speedV = setInterval(async() => {
             if (this.velocity1 == 0 && this.altitude) {
                 this.velocity1 = this.altitude;
             } else if (this.velocity2 == 0 && this.altitude && this.velocity1 && this.velocity1 != this.altitude) {
@@ -29,19 +31,22 @@ class Main {
                 this.velocity1 = 0;
                 this.velocity2 = 0;
             }
+
+            if (this.closed) {
+                clearInterval(speedV);
+            }
         }, 100)
     }
 
     async suicideBurn() {
-        console.log("suicide burn on")
-
         if (!this.burned) {
             this.burned = true;
-            this.control.sas.set(1);
-            this.control.sasMode.set("Retrograde");
-            this.control.throttle.set(1)
-            setTimeout(() => {
-                this.control.throttle.set(0)
+            await this.control.throttle.set(0);
+            await this.control.sas.set(1);
+            await this.control.rcs.set(1);
+            setTimeout(async() => {
+                await this.control.sasMode.set("Retrograde");
+                console.log("ALPHAR_LOGS: SUICIDE-BURN ON");
             }, 1000)
         }
 
@@ -52,44 +57,50 @@ class Main {
             const timeToGround = this.altitude / -(this.speed);
             const time = -(this.speed) / aceleration;
 
-            console.log("Tempo ate o chao: " + timeToGround);
-            console.log("Tempo: " + time);
-
             if (timeToGround <= time) {
                 if (this.speed < -2) {
-                    this.control.throttle.set(1);
+                    await this.control.throttle.set(1);
                 } else {
-                    this.control.throttle.set(0);
+                    await this.control.throttle.set(0);
                 }
             } else {
-                this.control.throttle.set(0);
+                await this.control.throttle.set(0);
             }
         }
 
-        if (this.altitude <= 8) {
-            this.control.throttle.set(0);
+        if (this.altitude <= 8 && this.falled) {
+            await this.control.throttle.set(0);
             this.burn = false;
+            console.log("ALPHAR_LOGS: SUCCESS IN LADING");
 
-            setTimeout(async() => {
-                this.control.sas.set(1);
-                console.log("Desligando Sistemas...")
-                await this.client.close();
-            }, 3000)
+            if (!this.closed) {
+                this.closed = true;
+
+                setTimeout(async() => {
+                    await this.control.sas.set(0);
+                    await this.control.rcs.set(0);
+                    console.log("ALPHAR_LOGS: TURNING OFF THE SYSTEM...");
+                    await this.client.close();
+                }, 3000)
+            }
         }
     }
 
     loop() {
-        setInterval(async() => {
+        let loopV = setInterval(async() => {
             this.altitude = await this.flight.surfaceAltitude.get();
-            console.log("ALPHAR LOGS: Altitude: " + this.altitude + ", Mass: " + this.mass + ", Speed: " + this.speed);
 
             if (this.burn) {
                 this.suicideBurn();
             }
 
-            if (this.speed < 0) {
+            if (this.speed < -0.1) {
+                this.falled = true;
                 this.burn = true;
-                this.control.throttle.set(0);
+            }
+
+            if (this.closed) {
+                clearInterval(loopV);
             }
         }, 100)
     }
@@ -104,6 +115,8 @@ class Main {
             this.flight = await this.vessel.flight(this.orbitalReference);
             this.altitude = await this.flight.surfaceAltitude.get();
             this.mass = await this.vessel.mass.get();
+            console.log("ALPHAR_LOGS: ALPHAR system on");
+            console.log(await this.vessel.situation.get());
 
             this.loop();
             this.speedDecoder();

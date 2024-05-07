@@ -5,6 +5,8 @@ class Main {
     constructor() {
         this.client;
         this.vessel;
+        this.orbit;
+        this.body;
         this.control;
         this.orbitalReference;
         this.flight;
@@ -12,14 +14,14 @@ class Main {
         this.burn = false;
         this.speed;
         this.mass;
-        this.gravity = 9.81;
+        this.gravity;
         this.burned = false;
         this.velocity1 = 0;
         this.velocity2 = 0;
         this.falled = false;
         this.closed;
         this.ground = 5;
-        this.autoThrottle = true;
+        this.autoThrottle = false;
     }
 
     speedDecoder() {
@@ -29,7 +31,7 @@ class Main {
             } else if (this.velocity2 == 0 && this.altitude && this.velocity1 && this.velocity1 != this.altitude) {
                 this.velocity2 = this.altitude;
             } else if (this.velocity1 && this.velocity2 ) {
-                this.speed = (this.velocity2 - this.velocity1) * 10;
+                this.speed = ((this.velocity2 - this.velocity1) * 10);
                 this.velocity1 = 0;
                 this.velocity2 = 0;
             }
@@ -53,7 +55,6 @@ class Main {
         }
 
         if (this.altitude <= 1500) {
-            this.control.legs.set(1);
             const motorForce = await this.vessel.availableThrust.get() / (this.mass * this.gravity);
             const aceleration = motorForce * this.gravity;
             const timeToGround = this.altitude / -(this.speed);
@@ -63,6 +64,7 @@ class Main {
                 if (this.speed < -2) {
                     this.autoThrottle = true;
                     await this.control.throttle.set(1);
+                    await this.control.legs.set(1);
                 } else {
                     await this.control.throttle.set(0);
                 }
@@ -114,6 +116,9 @@ class Main {
 
         try {
             this.vessel = await this.client.send(spaceCenter.getActiveVessel());
+            this.orbit = await this.vessel.orbit.get();
+            this.body = await this.orbit.body.get();
+            this.gravity = await this.body.gravitationalParameter.get() / Math.pow(await this.body.equatorialRadius.get(), 2);
             this.control = await this.vessel.control.get();
             this.orbitalReference = await this.vessel.orbitalReferenceFrame.get();
             this.flight = await this.vessel.flight(this.orbitalReference);
